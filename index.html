@@ -6,9 +6,7 @@
     <title>Seungyong (Alex) Yang</title>
     <link rel="icon" type="image/png" href="/favicon.png">
     <script>
-        const hash = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
-        if (hash.type === 'recovery') location.replace('/admin' + location.hash);
-        else location.replace('/home');
+        location.replace('/home');
     </script>
 </head>
 </html>
