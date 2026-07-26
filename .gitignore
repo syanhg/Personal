@@ -1,0 +1,7 @@
+# Raw capture files dropped in the repo root. The web-ready versions that
+# actually ship live in media/ — see the ffmpeg recipe in README.md.
+/*.MP4
+/*.mp4
+/*.mov
+/*.MOV
+!/media/
