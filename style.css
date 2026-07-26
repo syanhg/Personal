@@ -38,6 +38,10 @@ body {
     padding: 40px 0;
 }
 
+.photo-item {
+    position: relative;
+}
+
 /* Videos and images size from their width/height attributes, so the
    gallery reserves the right space before the media loads. */
 .photo {
@@ -45,6 +49,41 @@ body {
     width: 100%;
     height: auto;
     background-color: #e0e0e0;
+}
+
+.photo-caption {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-color: rgba(0, 0, 0, 0.55);
+    color: #f5f5f5;
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: center;
+    text-wrap: balance;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+@media (hover: hover) {
+    .photo-item:hover .photo-caption {
+        opacity: 1;
+    }
+}
+
+/* Touch devices have no hover, so caption.js toggles this class instead. */
+.photo-item.is-active .photo-caption {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .photo-caption {
+        transition: none;
+    }
 }
 
 @media (max-width: 768px) {
