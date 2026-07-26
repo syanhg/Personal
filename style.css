@@ -40,14 +40,6 @@ body {
 
 .photo-item {
     position: relative;
-    /* Contains the spring overshoot on the glass flood. */
-    overflow: hidden;
-    outline: none;
-}
-
-.photo-item:focus-visible {
-    outline: 1px solid #666;
-    outline-offset: 3px;
 }
 
 /* Videos and images size from their width/height attributes, so the
@@ -59,223 +51,38 @@ body {
     background-color: #e0e0e0;
 }
 
-/* ---- Liquid glass -------------------------------------------------------
-   Two stacked sheets flood outward from the center as ellipses that scale
-   with the tile, so the glass reaches all four edges at once instead of
-   sweeping like a spotlight. The lighter sheet runs slightly ahead of the
-   dark one, so an advancing rim of thinner glass leads the body the way a
-   meniscus leads a liquid, and the two converge as it settles.
-
-   Blur depth and darkness ramp alongside the radius, so the material reads
-   as thickening rather than fading in.
-
-   No SVG displacement here: CSS resolves `filter` before `clip-path`, so a
-   filter cannot warp a clip edge, and moving the filter to an ancestor makes
-   that ancestor a backdrop root, which kills `backdrop-filter` outright.
-   ---------------------------------------------------------------------- */
-.photo-glass {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.photo-glass__sheet {
-    position: absolute;
-    inset: 0;
-    clip-path: ellipse(0% 0% at 50% 50%);
-    opacity: 0;
-    -webkit-backdrop-filter: blur(0px) brightness(1) saturate(1);
-    backdrop-filter: blur(0px) brightness(1) saturate(1);
-    /* Closing: quick, slightly eased-in, no overshoot. */
-    transition:
-        clip-path 380ms cubic-bezier(0.45, 0, 0.7, 0.25),
-        backdrop-filter 300ms cubic-bezier(0.45, 0, 0.7, 0.25),
-        -webkit-backdrop-filter 300ms cubic-bezier(0.45, 0, 0.7, 0.25),
-        opacity 220ms linear 100ms;
-}
-
-/* The body of the glass. */
-.photo-glass__sheet--body {
-    background: linear-gradient(175deg, rgba(6, 8, 14, 0.34), rgba(0, 0, 0, 0.50));
-}
-
-/* The leading meniscus: thinner, lighter, and a step ahead of the body. */
-.photo-glass__sheet--lead {
-    background:
-        radial-gradient(120% 90% at 50% 0%, rgba(120, 140, 170, 0.24), transparent 64%),
-        linear-gradient(175deg, rgba(14, 17, 24, 0.30), rgba(0, 0, 0, 0.40));
-}
-
-/* Specular bevel: bright along the top edge, faint underneath, as if a
-   single light source sits above the panel. */
-.photo-glass::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 1px;
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.72) 0%,
-        rgba(255, 255, 255, 0.10) 22%,
-        rgba(255, 255, 255, 0) 55%,
-        rgba(255, 255, 255, 0.18) 100%
-    );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 260ms ease;
-}
-
-/* Light pooling through the top of the sheet. */
-.photo-glass::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(75% 50% at 50% -8%, rgba(255, 255, 255, 0.14), transparent 70%);
-    opacity: 0;
-    transition: opacity 420ms ease;
-}
-
 .photo-caption {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 14%;
-    /* System sans against the page's Times — the panel reads as a distinct
-       surface laid over the site rather than more page copy. */
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-    font-size: 17px;
-    font-weight: 500;
-    letter-spacing: -0.015em;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.94);
+    padding: 24px;
+    background-color: rgba(0, 0, 0, 0.55);
+    color: #f5f5f5;
+    font-size: 16px;
+    line-height: 1.6;
     text-align: center;
     text-wrap: balance;
-    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
-    pointer-events: none;
     opacity: 0;
-    transform: translateY(6px) scale(0.96);
-    transition:
-        opacity 160ms ease,
-        transform 240ms cubic-bezier(0.45, 0, 0.7, 0.25);
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
-/* ---- Open state --------------------------------------------------------
-   72% on each axis is what an ellipse needs to reach the rectangle's
-   corners; the spring carries it past that and back, which is the squish.
-
-   Duplicated across :hover and .is-active because hover is gated behind a
-   pointer query: iOS keeps a tapped element in :hover, which would strand
-   the panel open past the timer caption.js sets.
-   ---------------------------------------------------------------------- */
 @media (hover: hover) {
-    .photo-item:hover .photo-glass__sheet,
-    .photo-item:focus-visible .photo-glass__sheet {
-        clip-path: ellipse(72% 72% at 50% 50%);
+    .photo-item:hover .photo-caption {
         opacity: 1;
     }
-
-    .photo-item:hover .photo-glass__sheet--body,
-    .photo-item:focus-visible .photo-glass__sheet--body {
-        -webkit-backdrop-filter: blur(16px) brightness(0.32) saturate(185%);
-        backdrop-filter: blur(16px) brightness(0.32) saturate(185%);
-        transition:
-            clip-path 780ms cubic-bezier(0.30, 0.85, 0.28, 1.10),
-            backdrop-filter 760ms cubic-bezier(0.20, 1.10, 0.34, 1),
-            -webkit-backdrop-filter 760ms cubic-bezier(0.20, 1.10, 0.34, 1),
-            opacity 160ms linear;
-    }
-
-    .photo-item:hover .photo-glass__sheet--lead,
-    .photo-item:focus-visible .photo-glass__sheet--lead {
-        -webkit-backdrop-filter: blur(8px) brightness(0.42) saturate(155%);
-        backdrop-filter: blur(8px) brightness(0.42) saturate(155%);
-        /* Shorter and springier, so it runs ahead of the body. */
-        transition:
-            clip-path 620ms cubic-bezier(0.26, 0.95, 0.30, 1.22),
-            backdrop-filter 560ms cubic-bezier(0.20, 1.10, 0.34, 1),
-            -webkit-backdrop-filter 560ms cubic-bezier(0.20, 1.10, 0.34, 1),
-            opacity 130ms linear;
-    }
-
-    .photo-item:hover .photo-glass::before,
-    .photo-item:hover .photo-glass::after,
-    .photo-item:focus-visible .photo-glass::before,
-    .photo-item:focus-visible .photo-glass::after {
-        opacity: 1;
-    }
-
-    .photo-item:hover .photo-caption,
-    .photo-item:focus-visible .photo-caption {
-        opacity: 1;
-        transform: none;
-        transition:
-            opacity 320ms ease 210ms,
-            transform 640ms cubic-bezier(0.22, 1.30, 0.34, 1) 190ms;
-    }
 }
 
-.photo-item.is-active .photo-glass__sheet {
-    clip-path: ellipse(72% 72% at 50% 50%);
-    opacity: 1;
-}
-
-.photo-item.is-active .photo-glass__sheet--body {
-    -webkit-backdrop-filter: blur(16px) brightness(0.32) saturate(185%);
-    backdrop-filter: blur(16px) brightness(0.32) saturate(185%);
-    transition:
-        clip-path 780ms cubic-bezier(0.30, 0.85, 0.28, 1.10),
-        backdrop-filter 760ms cubic-bezier(0.20, 1.10, 0.34, 1),
-        -webkit-backdrop-filter 760ms cubic-bezier(0.20, 1.10, 0.34, 1),
-        opacity 160ms linear;
-}
-
-.photo-item.is-active .photo-glass__sheet--lead {
-    -webkit-backdrop-filter: blur(8px) brightness(0.42) saturate(155%);
-    backdrop-filter: blur(8px) brightness(0.42) saturate(155%);
-    transition:
-        clip-path 620ms cubic-bezier(0.26, 0.95, 0.30, 1.22),
-        backdrop-filter 560ms cubic-bezier(0.20, 1.10, 0.34, 1),
-        -webkit-backdrop-filter 560ms cubic-bezier(0.20, 1.10, 0.34, 1),
-        opacity 130ms linear;
-}
-
-.photo-item.is-active .photo-glass::before,
-.photo-item.is-active .photo-glass::after {
-    opacity: 1;
-}
-
+/* Touch devices have no hover, so caption.js toggles this class instead. */
 .photo-item.is-active .photo-caption {
     opacity: 1;
-    transform: none;
-    transition:
-        opacity 320ms ease 210ms,
-        transform 640ms cubic-bezier(0.22, 1.30, 0.34, 1) 190ms;
 }
 
-/* Keep the material, drop the choreography. */
 @media (prefers-reduced-motion: reduce) {
-    .photo-glass__sheet,
-    .photo-glass::before,
-    .photo-glass::after,
     .photo-caption {
-        transition-duration: 120ms !important;
-        transition-timing-function: ease !important;
-        transition-delay: 0ms !important;
-    }
-
-    .photo-item:hover .photo-glass__sheet,
-    .photo-item.is-active .photo-glass__sheet {
-        clip-path: ellipse(150% 150% at 50% 50%);
-    }
-
-    .photo-caption {
-        transform: none;
+        transition: none;
     }
 }
 
