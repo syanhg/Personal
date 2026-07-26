@@ -38,33 +38,13 @@ body {
     padding: 40px 0;
 }
 
+/* Videos and images size from their width/height attributes, so the
+   gallery reserves the right space before the media loads. */
 .photo {
+    display: block;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    height: auto;
     background-color: #e0e0e0;
-}
-
-/* Scroll reveal — only applied when JS is running, so the images
-   are never left hidden if the script never loads. */
-.js .photo {
-    opacity: 0;
-    transform: translateY(32px) scale(0.98);
-    will-change: opacity, transform;
-    transition: opacity 1s cubic-bezier(0.22, 0.61, 0.36, 1),
-                transform 1s cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-.js .photo.is-visible {
-    opacity: 1;
-    transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .js .photo {
-        opacity: 1;
-        transform: none;
-        transition: none;
-    }
 }
 
 @media (max-width: 768px) {
