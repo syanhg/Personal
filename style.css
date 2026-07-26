@@ -128,6 +128,13 @@ p a {
     text-decoration: underline;
 }
 
+/* Body-copy links get a dashed rule; the links row stays solid. */
+p:not(.links) a {
+    text-decoration-style: dashed;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+}
+
 .h1-link {
     color: inherit;
     border-bottom: none;
