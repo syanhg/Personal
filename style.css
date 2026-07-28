@@ -10,44 +10,55 @@ body {
     min-height: 100vh;
 }
 
+/* Desktop runs horizontal: the profile and its caption sit at the top and stay
+   there, and the videos run off to the right in a strip that scrolls sideways.
+   The page itself never scrolls — only the strip does. */
 .layout {
     display: flex;
-    align-items: flex-start;
-    gap: 80px;
-    padding: 0 24px 0 40px;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 
+/* 380px wide against 40px of left padding leaves the 340px column the caption
+   box is measured against. */
 .container {
-    flex: 0 0 340px;
-    position: sticky;
-    top: 0;
-    height: 100vh;
+    flex: none;
+    width: 380px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding: 40px 0;
+    padding: 40px 0 0 40px;
     animation: pageFadeIn 0.3s ease;
 }
 
 .gallery {
     flex: 1;
-    min-width: 0;
+    min-height: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 24px;
-    padding: 40px 0;
+    padding: 28px 40px 40px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
 }
 
 .photo-item {
     position: relative;
+    flex: none;
 }
 
-/* Videos and images size from their width/height attributes, so the
-   gallery reserves the right space before the media loads. */
+/* The height is what is left of the window under the profile, stated outright
+   rather than as a percentage: a clip's width follows from its own aspect ratio,
+   so a percentage height would have to resolve before the width it depends on.
+   Width comes from the width/height attributes, so the row reserves the right
+   space before the media loads. */
 .photo {
     display: block;
-    width: 100%;
-    height: auto;
+    height: calc(100vh - 380px);
+    max-height: 100%;
+    width: auto;
     background-color: #e0e0e0;
 }
 
@@ -63,24 +74,15 @@ body {
     pointer-events: none;
 }
 
-/* Captions read in the sidebar, not over the footage. The bio and the caption
-   box share one grid cell, so the box takes the bio's exact place while a video
-   is hovered and gives it straight back afterwards, with nothing moving. */
-.swap {
-    display: grid;
-}
+/* The caption reads under the profile, not over the footage. It holds the
+   placeholder until a video is hovered.
 
-.swap > * {
-    grid-area: 1 / 1;
-    transition: opacity 0.2s ease;
-}
-
-/* 12px keeps every caption on exactly two rows in the 340px column: the
-   longest needs under 13.7px to stay off a third row, the shortest over 10.9px
-   to keep off a single one. The min-height holds those two rows whatever the
-   text does, so the box never changes size between videos. */
+   12px keeps every caption on exactly two rows in the 340px column: the longest
+   needs under 13.7px to stay off a third row, the shortest over 10.9px to keep
+   off a single one. The min-height holds those two rows whatever the text does,
+   so the box never changes size between videos. */
 .caption-box {
-    align-self: start;
+    margin-top: 28px;
     padding: 20px;
     min-height: calc(3.2em + 40px);
     background-color: #e8e8e8;
@@ -90,20 +92,15 @@ body {
     letter-spacing: -0.01em;
     line-height: 1.6;
     text-wrap: balance;
-    opacity: 0;
-    pointer-events: none;
 }
 
-.container.is-captioning .bio {
-    opacity: 0;
-}
-
-.container.is-captioning .caption-box {
-    opacity: 1;
+/* Nothing hovered, so the prompt sits back from the real captions. */
+.caption-box.is-placeholder {
+    color: #999;
 }
 
 /* The figcaptions are the source text and stay readable to screen readers,
-   but on desktop only the sidebar box shows them. */
+   but on desktop only the box below the profile shows them. */
 .photo-caption {
     position: absolute;
     width: 1px;
@@ -115,58 +112,84 @@ body {
     white-space: nowrap;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .swap > * {
-        transition: none;
-    }
-}
-
+/* Mobile keeps the layout it always had: everything stacked, the videos in a
+   column, and each caption over its own video. */
 @media (max-width: 768px) {
     .layout {
         flex-direction: column;
-        gap: 0;
+        height: auto;
+        overflow: visible;
         padding: 0 24px;
     }
 
     .container {
-        flex: none;
-        position: static;
-        height: auto;
         width: 100%;
         padding: 40px 0 20px;
     }
 
     .gallery {
+        flex: none;
+        flex-direction: column;
         width: 100%;
         padding: 0 0 40px;
+        overflow: visible;
     }
 
-    /* No hover to drive the sidebar box, so each caption sits under its own
-       video instead. */
+    .photo-item {
+        height: auto;
+    }
+
+    .photo {
+        width: 100%;
+        height: auto;
+        max-height: none;
+    }
+
+    /* No hover to drive it, and no room beside the strip for it to sit in. */
     .caption-box {
         display: none;
     }
 
     .photo-caption {
-        position: static;
+        inset: 0;
         width: auto;
         height: auto;
         margin: 0;
-        overflow: visible;
+        overflow: hidden;
         clip-path: none;
         white-space: normal;
-        padding-top: 10px;
-        color: #666;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background-color: rgba(0, 0, 0, 0.68);
+        color: #f5f5f5;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 13px;
+        font-size: 15px;
         letter-spacing: -0.01em;
         line-height: 1.6;
-        text-wrap: pretty;
+        text-align: center;
+        text-wrap: balance;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+
+    /* Touch has no hover, so caption.js toggles this class on tap instead. */
+    .photo-item.is-active .photo-caption {
+        opacity: 1;
     }
 
     /* The divergence is desktop-only; glass.js stops painting here too. */
     #page-glass {
         display: none;
+    }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+    .photo-caption {
+        transition: none;
     }
 }
 
@@ -200,7 +223,9 @@ p.links {
     margin-bottom: 6px;
 }
 
-.container p:not(.links):last-child {
+/* The caption box follows the bio now, so the last line is no longer the
+   container's last child. */
+.container p:not(.links):last-of-type {
     margin-bottom: 0;
 }
 
