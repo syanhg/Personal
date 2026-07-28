@@ -29,13 +29,15 @@ body {
     animation: pageFadeIn 0.3s ease;
 }
 
+/* No padding at either end: the clips run flush to the top and bottom of the
+   page, so there is nothing between them and the edges for the divergence to
+   work across. */
 .gallery {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 24px;
-    padding: 40px 0;
 }
 
 .photo-item {
@@ -138,7 +140,6 @@ body {
 
     .gallery {
         width: 100%;
-        padding: 0 0 40px;
     }
 
     /* No hover to swap the sidebar with, so the caption goes back over its own
