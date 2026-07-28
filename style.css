@@ -51,19 +51,22 @@ body {
     background-color: #e0e0e0;
 }
 
-/* WebGL overlay for the liquid-glass rims. It sits directly on the video and
-   is transparent everywhere except the top and bottom band glass.js draws. */
-.photo-glass {
-    position: absolute;
+/* The liquid-glass strips at the top and bottom of the viewport. The canvas
+   spans the window but glass.js only paints where a video is passing under a
+   strip; everywhere else it stays transparent. */
+#page-glass {
+    position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
+    z-index: 1;
     pointer-events: none;
 }
 
 .photo-caption {
     position: absolute;
     inset: 0;
+    z-index: 2;   /* above the glass — the strips refract footage, not captions */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -118,8 +121,8 @@ body {
         padding: 0 0 40px;
     }
 
-    /* The glass rims are desktop-only; glass.js stops feeding this canvas here. */
-    .photo-glass {
+    /* The glass strips are desktop-only; glass.js stops painting here too. */
+    #page-glass {
         display: none;
     }
 }
