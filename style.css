@@ -51,6 +51,16 @@ body {
     background-color: #e0e0e0;
 }
 
+/* WebGL overlay for the liquid-glass rims. It sits directly on the video and
+   is transparent everywhere except the top and bottom band glass.js draws. */
+.photo-glass {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
 .photo-caption {
     position: absolute;
     inset: 0;
@@ -106,6 +116,11 @@ body {
     .gallery {
         width: 100%;
         padding: 0 0 40px;
+    }
+
+    /* The glass rims are desktop-only; glass.js stops feeding this canvas here. */
+    .photo-glass {
+        display: none;
     }
 }
 
