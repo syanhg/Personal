@@ -1,15 +1,13 @@
-// A bar of liquid glass lying along the top and bottom of the viewport. Videos
-// scrolling through them are refracted by the same shader you'd get from the
-// reference lens — rounded-box mask, lens magnification, frosted sampling, and
-// the rb1/rb2/rb3 rim lighting — with the 2D rounded box collapsed into a
-// horizontal slab, so the bar's two faces play the part of the lens edge.
+// Clips diverge as they reach the top and bottom ends of the page. Near an end
+// the footage spreads sideways past its own box and stretches on out of frame,
+// hardest at the very edge and easing to nothing a little way in, so there is
+// no boundary to see — the clip just bows open as it leaves.
 //
-// On top of the reference: the clip swells sideways and its channels take
-// different lens depths as it passes through, so it separates like anaglyph.
-// That spread opens up with scroll speed and closes when the page settles.
-//
-// The bars only paint where a clip is under them; the rest of the page, and
-// whatever the lens drags in from past the end of a clip, stays page colour.
+// The lens is the reference shader's: magnify by a field, sample soft, lift the
+// light a touch. What is gone is its rounded-box mask — that made the glass a
+// distinct object with a rim, and here the distortion has to fade out instead.
+// The three channels diverge at slightly different widths, so the ends fringe,
+// and the whole thing opens up with scroll speed.
 
 document.addEventListener('DOMContentLoaded', () => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -22,11 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const videos = Array.from(document.querySelectorAll('.photo-item video.photo'));
     if (!videos.length) return;
 
-    const BAND_RATIO = 0.13;   // bar depth as a share of the viewport height
-    const BAND_MIN = 80;
-    const BAND_MAX = 175;
-    const FROST_PX = 1.5;      // tap spacing for the frosted sampling, in css px
-    const VEL_SCALE = 45;      // px of scroll per frame that counts as full speed
+    const REACH_RATIO = 0.15;   // how far in from an end the divergence reaches
+    const REACH_MIN = 110;
+    const REACH_MAX = 240;
+    const SPREAD = 0.14;        // widest the clip splays at the very end
+    const SEPARATION = 0.16;    // how much further red splays than blue
+    const STRETCH = 0.13;       // lengthwise pull, as a share of the reach
+    const STRETCH_MAX = 20;     // px — kept under the gallery gap so clips
+                                // cannot climb into each other
+    const LIFT = 0.06;          // the reference's light, much reduced
+    const FROST_PX = 1.5;       // tap spacing for the soft sampling, in css px
+    const VEL_SCALE = 45;       // px of scroll per frame that counts as full speed
     const MAX_DPR = 2;
     const BG = [0xf5 / 255, 0xf5 / 255, 0xf5 / 255];   // matches body background
 
@@ -48,101 +52,76 @@ document.addEventListener('DOMContentLoaded', () => {
         varying vec2 vPx;
 
         uniform sampler2D iChannel0;
-        uniform vec4 uRect;    // the clip's box in viewport px: x, y, w, h
-        uniform vec2 uSlab;    // the bar: midline y, half depth — in viewport px
-        uniform vec2 uTexel;   // frost tap spacing, in uv
-        uniform float uVel;    // -1..1 scroll velocity
+        uniform vec4 uRect;      // the clip's box in viewport px: x, y, w, h
+        uniform vec2 uEnd;       // viewport y of the end, and how far it reaches
+        uniform float uDir;      // +1 when the page interior is below the end
+        uniform float uStretch;  // lengthwise pull at the very end, in px
+        uniform vec2 uSpread;    // sideways splay, and the red/blue difference
+        uniform vec2 uTexel;     // soft-sampling tap spacing, in uv
+        uniform float uVel;      // -1..1 scroll velocity
         uniform vec3 uBg;
 
-        const float POWER_EXPONENT = 6.0;
-        const float MASK_MULTIPLIER_1 = 1.0;
-        const float MASK_MULTIPLIER_2 = 0.95;
-        const float MASK_MULTIPLIER_3 = 1.1;
-        const float MASK_STRENGTH_1 = 8.0;
-        const float MASK_STRENGTH_2 = 16.0;
-        const float MASK_STRENGTH_3 = 2.0;
-        const float MASK_THRESHOLD_1 = 0.95;
-        const float MASK_THRESHOLD_2 = 0.9;
-        const float MASK_THRESHOLD_3 = 1.5;
-        const float LENS_DEPTH = 0.5;
         const float SAMPLE_RANGE = 1.0;
-        const float LIGHTING_INTENSITY = 0.3;
-        const float SWELL = 0.05;         // how far the clip spreads sideways
-        const float SEPARATION = 0.008;   // anaglyph split, in uv
-        const float SLAB_HALF_UV = 0.215; // the reference blob's half height
+        const float LIFT = ${LIFT.toFixed(3)};
 
         // Past the end of a clip there is only flat page colour, so fill with
-        // that instead of smearing the clip's own edge pixels.
+        // that rather than smearing the clip's own edge pixels — it is what
+        // makes the splayed channels fringe against the page instead of streak.
         vec3 tap(vec2 uv) {
-            vec3 c = texture2D(iChannel0, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
-            float inside = step(0.0, uv.x) * step(uv.x, 1.0)
-                         * step(0.0, uv.y) * step(uv.y, 1.0);
-            return mix(uBg, c, inside);
+            return mix(uBg, texture2D(iChannel0, clamp(uv, vec2(0.0), vec2(1.0))).rgb,
+                       step(0.0, uv.x) * step(uv.x, 1.0) *
+                       step(0.0, uv.y) * step(uv.y, 1.0));
         }
 
-        // The reference frosts with a 9x9 box; these bars cover far more of the
-        // screen than its lens did, and each channel needs its own pass, so the
-        // kernel is thinned to 3x3 and the taps spaced wider to compensate.
-        vec3 frost(vec2 uv) {
+        // Softens with the divergence and collapses to a straight read where it
+        // ends, so the sampling itself never marks the boundary.
+        vec3 frost(vec2 uv, float spacing) {
             vec3 total = vec3(0.0);
             for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
                 for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
-                    total += tap(uv + vec2(x, y) * uTexel);
+                    total += tap(uv + vec2(x, y) * uTexel * spacing);
                 }
             }
             return total / 9.0;
         }
 
         void main() {
-            // The slab standing in for the reference's rounded box: flat through
-            // the middle of the bar, rising steeply at either face.
-            float q = (vPx.y - uSlab.x) / uSlab.y;   // -1..1 across the bar
-            float roundedBox = pow(abs(q), POWER_EXPONENT);
+            // 1 hard against the end, easing to nothing at the reach. Squared,
+            // so it lands flat and leaves no seam where it runs out.
+            float t = clamp(abs(vPx.y - uEnd.x) / uEnd.y, 0.0, 1.0);
+            float s = (1.0 - t) * (1.0 - t);
+            if (s <= 0.0) discard;
 
-            float rb1 = clamp((1.0 - roundedBox * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, 0.0, 1.0);
-            float rb2 = clamp((MASK_THRESHOLD_1 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, 0.0, 1.0) -
-                clamp((MASK_THRESHOLD_2 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, 0.0, 1.0);
-            float rb3 = clamp((MASK_THRESHOLD_3 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, 0.0, 1.0) -
-                clamp((1.0 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, 0.0, 1.0);
-
-            float transition = smoothstep(0.0, 1.0, rb1 + rb2);
-            if (transition <= 0.0) discard;
-
-            vec2 uv = (vPx - uRect.xy) / uRect.zw;
-            float mid = (uSlab.x - uRect.y) / uRect.w;   // the bar's midline, in uv
             float speed = min(abs(uVel), 1.0);
-            float spread = 0.12 + 0.88 * speed;
+            float sep = uSpread.y * (0.35 + 0.65 * speed);
+            float splay = uSpread.x * s;
 
-            // The bar squeezes what sits under its faces back toward its midline
-            // and lets the middle through straight — the reference's lens, on one
-            // axis.
-            float depth = roundedBox * LENS_DEPTH;
+            // Sampling from further inside as the end approaches is what pulls
+            // the picture out past where the clip really stops.
+            float v = (vPx.y + uDir * uStretch * s - uRect.y) / uRect.w;
+            float dx = vPx.x - (uRect.x + uRect.z * 0.5);
 
-            // The 3D spread runs across the whole bar rather than only its rim,
-            // so a clip swells and its channels part company the entire time it
-            // is passing through. At rest it closes back up to almost nothing.
-            float pass = rb1 * (0.45 + 0.55 * roundedBox) * spread;
-            float swell = 1.0 + pass * SWELL;
-            float sep = pass * SEPARATION;
-            float ux = 0.5 + (uv.x - 0.5) * swell;
+            // Three widths: red opens widest, blue narrowest, so the ends part
+            // into colour the further they diverge.
+            float ur = 0.5 + dx / (uRect.z * (1.0 + splay * (1.0 + sep)));
+            float ug = 0.5 + dx / (uRect.z * (1.0 + splay));
+            float ub = 0.5 + dx / (uRect.z * (1.0 + splay * (1.0 - sep)));
 
-            vec2 lensR = vec2(ux + sep, mid + (uv.y - mid) * (1.0 - depth * (1.0 + spread)));
-            vec2 lensG = vec2(ux, mid + (uv.y - mid) * (1.0 - depth));
-            vec2 lensB = vec2(ux - sep, mid + (uv.y - mid) * (1.0 - depth * (1.0 - spread)));
+            vec3 col = vec3(
+                frost(vec2(ur, v), s).r,
+                frost(vec2(ug, v), s).g,
+                frost(vec2(ub, v), s).b
+            );
+            col += LIFT * s * s;   // the reference's lighting, held right down
 
-            vec4 fragColor = vec4(frost(lensR).r, frost(lensG).g, frost(lensB).b, 1.0);
+            // Opaque wherever the clip is actually displaced, so the untouched
+            // video underneath is covered; transparent where it is not, and
+            // feathered by a pixel where the splayed picture runs out.
+            float feather = smoothstep(0.0, uTexel.x, ug) * smoothstep(0.0, uTexel.x, 1.0 - ug)
+                          * smoothstep(0.0, uTexel.y, v) * smoothstep(0.0, uTexel.y, 1.0 - v);
+            float a = smoothstep(0.0, 0.03, s) * feather;
 
-            // Lighting, as in the reference: a soft gradient down the body plus
-            // the bright ring hugging each face. The reference works in screen-up
-            // coordinates, so the slab position flips sign on the way in.
-            float m2y = -q * SLAB_HALF_UV;
-            float gradient = clamp((clamp(m2y, 0.0, 0.2) + 0.1) / 2.0, 0.0, 1.0) +
-                clamp((clamp(-m2y, -1000.0, 0.2) * rb3 + 0.1) / 2.0, 0.0, 1.0);
-            vec4 lighting = clamp(fragColor + vec4(rb1) * gradient + vec4(rb2) * LIGHTING_INTENSITY, 0.0, 1.0);
-
-            // The reference mixes back to the untouched image; here the untouched
-            // image is the real video underneath, so fade out in alpha instead.
-            gl_FragColor = vec4(lighting.rgb * transition, transition);   // premultiplied
+            gl_FragColor = clamp(vec4(col * a, a), 0.0, 1.0);   // premultiplied
         }
     `;
 
@@ -210,7 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
         quad: gl.getUniformLocation(program, 'uQuad'),
         rect: gl.getUniformLocation(program, 'uRect'),
         resolution: gl.getUniformLocation(program, 'uRes'),
-        slab: gl.getUniformLocation(program, 'uSlab'),
+        end: gl.getUniformLocation(program, 'uEnd'),
+        dir: gl.getUniformLocation(program, 'uDir'),
+        stretch: gl.getUniformLocation(program, 'uStretch'),
+        spread: gl.getUniformLocation(program, 'uSpread'),
         texel: gl.getUniformLocation(program, 'uTexel'),
         vel: gl.getUniformLocation(program, 'uVel'),
         bg: gl.getUniformLocation(program, 'uBg')
@@ -221,8 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
     gl.clearColor(0, 0, 0, 0);
     gl.uniform1i(uniforms.texture, 0);
     gl.uniform3f(uniforms.bg, BG[0], BG[1], BG[2]);
+    gl.uniform2f(uniforms.spread, SPREAD, SEPARATION);
 
-    // One texture per clip, built the first time that clip reaches a bar.
+    // One texture per clip, built the first time that clip reaches an end.
     const slots = new Map();
     const setupTexture = (video) => {
         let slot = slots.get(video);
@@ -239,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return slot;
     };
 
-    // Upload at most once per clip per frame, however many bars it is under.
+    // Upload at most once per clip per frame, however many ends it reaches.
     const upload = (video, frameId) => {
         const slot = setupTexture(video);
         gl.activeTexture(gl.TEXTURE0);
@@ -279,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     canvas.addEventListener('webglcontextrestored', () => {
         // Program and textures went with the context; a reload is the only
-        // honest recovery, so drop the bars rather than draw garbage.
+        // honest recovery, so drop the effect rather than draw garbage.
         canvas.remove();
     });
 
@@ -307,20 +290,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const y = window.scrollY;
         const raw = Math.max(-1, Math.min(1, (y - lastScroll) / VEL_SCALE));
         lastScroll = y;
-        velocity += (raw - velocity) * 0.2;   // smoothed, so the split eases out
+        velocity += (raw - velocity) * 0.2;   // smoothed, so the splay eases out
 
-        const band = Math.min(BAND_MAX, Math.max(BAND_MIN, vh * BAND_RATIO));
-        const half = band / 2;
+        const reach = Math.min(REACH_MAX, Math.max(REACH_MIN, vh * REACH_RATIO));
+        const stretch = Math.min(STRETCH_MAX, reach * STRETCH);
+        const widest = SPREAD * (1 + SEPARATION);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         painted = false;
         frameId++;
         gl.uniform1f(uniforms.vel, velocity);
+        gl.uniform1f(uniforms.stretch, stretch);
 
-        // Each bar redraws whatever slice of a clip is lying under it.
-        const bars = [
-            { mid: half, top: 0, bottom: band },
-            { mid: vh - half, top: vh - band, bottom: vh }
+        const ends = [
+            { y: 0, dir: 1, top: 0, bottom: reach },
+            { y: vh, dir: -1, top: vh - reach, bottom: vh }
         ];
 
         videos.forEach(video => {
@@ -329,15 +313,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rect.bottom <= 0 || rect.top >= vh) return;
             if (video.readyState < 2 || !video.videoWidth) return;   // no frame yet
 
-            bars.forEach(bar => {
-                const top = Math.max(rect.top, bar.top);
-                const bottom = Math.min(rect.bottom, bar.bottom);
+            // The quad has to hold the picture after it splays, so it runs wider
+            // than the clip and a little past both of its ends.
+            const grow = rect.width * widest * 0.5;
+            const left = rect.left - grow;
+            const width = rect.width + grow * 2;
+
+            ends.forEach(end => {
+                const top = Math.max(rect.top - stretch, end.top);
+                const bottom = Math.min(rect.bottom + stretch, end.bottom);
                 if (bottom - top < 0.5) return;
 
                 upload(video, frameId);
                 gl.uniform4f(uniforms.rect, rect.left, rect.top, rect.width, rect.height);
-                gl.uniform4f(uniforms.quad, rect.left, top, rect.width, bottom - top);
-                gl.uniform2f(uniforms.slab, bar.mid, half);
+                gl.uniform4f(uniforms.quad, left, top, width, bottom - top);
+                gl.uniform2f(uniforms.end, end.y, reach);
+                gl.uniform1f(uniforms.dir, end.dir);
                 gl.uniform2f(uniforms.texel, FROST_PX / rect.width, FROST_PX / rect.height);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 painted = true;

@@ -51,9 +51,9 @@ body {
     background-color: #e0e0e0;
 }
 
-/* The liquid-glass strips at the top and bottom of the viewport. The canvas
-   spans the window but glass.js only paints where a video is passing under a
-   strip; everywhere else it stays transparent. */
+/* Where the videos diverge at the top and bottom ends of the page. The canvas
+   spans the window so the picture can splay past the edges of its own box;
+   everywhere glass.js is not drawing, it stays transparent. */
 #page-glass {
     position: fixed;
     inset: 0;
@@ -66,7 +66,7 @@ body {
 .photo-caption {
     position: absolute;
     inset: 0;
-    z-index: 2;   /* above the glass — the strips refract footage, not captions */
+    z-index: 2;   /* above the canvas — the ends bend footage, not captions */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -121,7 +121,7 @@ body {
         padding: 0 0 40px;
     }
 
-    /* The glass strips are desktop-only; glass.js stops painting here too. */
+    /* The divergence is desktop-only; glass.js stops painting here too. */
     #page-glass {
         display: none;
     }
