@@ -1,16 +1,15 @@
-// Two ways to read a caption. On desktop, hovering a video writes its line into
-// the box under the profile and leaving restores the placeholder. On touch there
-// is no hover, so a tap lays the caption over the video for six seconds instead
-// and tapping again dismisses it early.
+// Two ways to read a caption. On desktop, hovering a video swaps the bio out
+// for a grey box holding that video's caption, in the same place, and leaving
+// puts the bio back. Touch devices have no hover, so there a tap lays the
+// caption over the video for six seconds and tapping again dismisses it early.
 document.addEventListener('DOMContentLoaded', () => {
     const items = document.querySelectorAll('.photo-item');
     if (!items.length) return;
 
     if (window.matchMedia('(hover: hover)').matches) {
+        const container = document.querySelector('.container');
         const box = document.querySelector('.caption-box');
-        if (!box) return;
-
-        const placeholder = box.textContent.trim();
+        if (!container || !box) return;
 
         items.forEach(item => {
             const caption = item.querySelector('.photo-caption');
@@ -19,11 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const line = caption.textContent.trim();
             item.addEventListener('mouseenter', () => {
                 box.textContent = line;
-                box.classList.remove('is-placeholder');
+                container.classList.add('is-captioning');
             });
             item.addEventListener('mouseleave', () => {
-                box.textContent = placeholder;
-                box.classList.add('is-placeholder');
+                container.classList.remove('is-captioning');
             });
         });
         return;

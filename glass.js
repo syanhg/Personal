@@ -1,25 +1,24 @@
-// Clips diverge as they reach the left and right ends of the strip. Near an end
-// the footage spreads taller than its own box and stretches on out of frame,
+// Clips diverge as they reach the top and bottom ends of the page. Near an end
+// the footage spreads sideways past its own box and stretches on out of frame,
 // hardest at the very edge and easing to nothing a little way in, so there is
 // no boundary to see — the clip just bows open as it leaves.
 //
 // The lens is the reference shader's: magnify by a field, sample soft, lift the
 // light a touch. What is gone is its rounded-box mask — that made the glass a
 // distinct object with a rim, and here the distortion has to fade out instead.
-// The three channels diverge at slightly different heights, so the ends fringe,
-// and the whole thing opens up with the speed of the strip.
+// The three channels diverge at slightly different widths, so the ends fringe,
+// and the whole thing opens up with scroll speed.
 
 document.addEventListener('DOMContentLoaded', () => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    // Desktop only: the strip is a desktop composition, and phones pay for the
-    // texture uploads either way.
+    // Desktop only: phones scroll too fast and loosely for the effect to read,
+    // and they pay for the texture uploads either way.
     const small = window.matchMedia('(max-width: 768px), (pointer: coarse)');
     if (small.matches) return;
 
-    const gallery = document.querySelector('.gallery');
     const videos = Array.from(document.querySelectorAll('.photo-item video.photo'));
-    if (!gallery || !videos.length) return;
+    if (!videos.length) return;
 
     const REACH_RATIO = 0.15;   // how far in from an end the divergence reaches
     const REACH_MIN = 110;
@@ -54,12 +53,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         uniform sampler2D iChannel0;
         uniform vec4 uRect;      // the clip's box in viewport px: x, y, w, h
-        uniform vec2 uEnd;       // viewport x of the end, and how far it reaches
-        uniform float uDir;      // +1 when the strip runs right of the end
+        uniform vec2 uEnd;       // viewport y of the end, and how far it reaches
+        uniform float uDir;      // +1 when the page interior is below the end
         uniform float uStretch;  // lengthwise pull at the very end, in px
-        uniform vec2 uSpread;    // splay, and the red/blue difference
+        uniform vec2 uSpread;    // sideways splay, and the red/blue difference
         uniform vec2 uTexel;     // soft-sampling tap spacing, in uv
-        uniform float uVel;      // -1..1 strip velocity
+        uniform float uVel;      // -1..1 scroll velocity
         uniform vec3 uBg;
 
         const float SAMPLE_RANGE = 1.0;
@@ -89,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         void main() {
             // 1 hard against the end, easing to nothing at the reach. Squared,
             // so it lands flat and leaves no seam where it runs out.
-            float t = clamp(abs(vPx.x - uEnd.x) / uEnd.y, 0.0, 1.0);
+            float t = clamp(abs(vPx.y - uEnd.x) / uEnd.y, 0.0, 1.0);
             float s = (1.0 - t) * (1.0 - t);
             if (s <= 0.0) discard;
 
@@ -97,29 +96,29 @@ document.addEventListener('DOMContentLoaded', () => {
             float sep = uSpread.y * (0.35 + 0.65 * speed);
             float splay = uSpread.x * s;
 
-            // Sampling from further along the strip as the end approaches is
-            // what pulls the picture out past where the clip really stops.
-            float u = (vPx.x + uDir * uStretch * s - uRect.x) / uRect.z;
-            float dy = vPx.y - (uRect.y + uRect.w * 0.5);
+            // Sampling from further inside as the end approaches is what pulls
+            // the picture out past where the clip really stops.
+            float v = (vPx.y + uDir * uStretch * s - uRect.y) / uRect.w;
+            float dx = vPx.x - (uRect.x + uRect.z * 0.5);
 
-            // Three heights: red opens widest, blue narrowest, so the ends part
+            // Three widths: red opens widest, blue narrowest, so the ends part
             // into colour the further they diverge.
-            float vr = 0.5 + dy / (uRect.w * (1.0 + splay * (1.0 + sep)));
-            float vg = 0.5 + dy / (uRect.w * (1.0 + splay));
-            float vb = 0.5 + dy / (uRect.w * (1.0 + splay * (1.0 - sep)));
+            float ur = 0.5 + dx / (uRect.z * (1.0 + splay * (1.0 + sep)));
+            float ug = 0.5 + dx / (uRect.z * (1.0 + splay));
+            float ub = 0.5 + dx / (uRect.z * (1.0 + splay * (1.0 - sep)));
 
             vec3 col = vec3(
-                frost(vec2(u, vr), s).r,
-                frost(vec2(u, vg), s).g,
-                frost(vec2(u, vb), s).b
+                frost(vec2(ur, v), s).r,
+                frost(vec2(ug, v), s).g,
+                frost(vec2(ub, v), s).b
             );
             col += LIFT * s * s;   // the reference's lighting, held right down
 
             // Opaque wherever the clip is actually displaced, so the untouched
             // video underneath is covered; transparent where it is not, and
             // feathered by a pixel where the splayed picture runs out.
-            float feather = smoothstep(0.0, uTexel.x, u) * smoothstep(0.0, uTexel.x, 1.0 - u)
-                          * smoothstep(0.0, uTexel.y, vg) * smoothstep(0.0, uTexel.y, 1.0 - vg);
+            float feather = smoothstep(0.0, uTexel.x, ug) * smoothstep(0.0, uTexel.x, 1.0 - ug)
+                          * smoothstep(0.0, uTexel.y, v) * smoothstep(0.0, uTexel.y, 1.0 - v);
             float a = smoothstep(0.0, 0.03, s) * feather;
 
             gl_FragColor = clamp(vec4(col * a, a), 0.0, 1.0);   // premultiplied
@@ -267,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.remove();
     });
 
-    let lastScroll = gallery.scrollLeft;
+    let lastScroll = window.scrollY;
     let velocity = 0;
     let painted = false;
     let frameId = 0;
@@ -288,12 +287,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (vw !== window.innerWidth || vh !== window.innerHeight) setCanvasSize();
 
-        const x = gallery.scrollLeft;
-        const raw = Math.max(-1, Math.min(1, (x - lastScroll) / VEL_SCALE));
-        lastScroll = x;
+        const y = window.scrollY;
+        const raw = Math.max(-1, Math.min(1, (y - lastScroll) / VEL_SCALE));
+        lastScroll = y;
         velocity += (raw - velocity) * 0.2;   // smoothed, so the splay eases out
 
-        const reach = Math.min(REACH_MAX, Math.max(REACH_MIN, vw * REACH_RATIO));
+        const reach = Math.min(REACH_MAX, Math.max(REACH_MIN, vh * REACH_RATIO));
         const stretch = Math.min(STRETCH_MAX, reach * STRETCH);
         const widest = SPREAD * (1 + SEPARATION);
 
@@ -304,31 +303,31 @@ document.addEventListener('DOMContentLoaded', () => {
         gl.uniform1f(uniforms.stretch, stretch);
 
         const ends = [
-            { x: 0, dir: 1, left: 0, right: reach },
-            { x: vw, dir: -1, left: vw - reach, right: vw }
+            { y: 0, dir: 1, top: 0, bottom: reach },
+            { y: vh, dir: -1, top: vh - reach, bottom: vh }
         ];
 
         videos.forEach(video => {
             const rect = video.getBoundingClientRect();
             if (rect.width < 1 || rect.height < 1) return;
-            if (rect.right <= 0 || rect.left >= vw) return;
+            if (rect.bottom <= 0 || rect.top >= vh) return;
             if (video.readyState < 2 || !video.videoWidth) return;   // no frame yet
 
-            // The quad has to hold the picture after it splays, so it runs
-            // taller than the clip and a little past both of its ends.
-            const grow = rect.height * widest * 0.5;
-            const top = rect.top - grow;
-            const height = rect.height + grow * 2;
+            // The quad has to hold the picture after it splays, so it runs wider
+            // than the clip and a little past both of its ends.
+            const grow = rect.width * widest * 0.5;
+            const left = rect.left - grow;
+            const width = rect.width + grow * 2;
 
             ends.forEach(end => {
-                const left = Math.max(rect.left - stretch, end.left);
-                const right = Math.min(rect.right + stretch, end.right);
-                if (right - left < 0.5) return;
+                const top = Math.max(rect.top - stretch, end.top);
+                const bottom = Math.min(rect.bottom + stretch, end.bottom);
+                if (bottom - top < 0.5) return;
 
                 upload(video, frameId);
                 gl.uniform4f(uniforms.rect, rect.left, rect.top, rect.width, rect.height);
-                gl.uniform4f(uniforms.quad, left, top, right - left, height);
-                gl.uniform2f(uniforms.end, end.x, reach);
+                gl.uniform4f(uniforms.quad, left, top, width, bottom - top);
+                gl.uniform2f(uniforms.end, end.y, reach);
                 gl.uniform1f(uniforms.dir, end.dir);
                 gl.uniform2f(uniforms.texel, FROST_PX / rect.width, FROST_PX / rect.height);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
