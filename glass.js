@@ -1,9 +1,15 @@
-// A pane of liquid glass across the top and bottom of the viewport. Videos
-// scrolling through those strips are refracted by it: the footage bends as it
-// slides under the rim and its colour channels pull apart, hardest while the
-// page is moving fast. Nothing else on the page is touched — the strips only
-// draw where a video is under them, and the flat page colour fills whatever the
-// bend pulls in from off the edge of a clip.
+// A bar of liquid glass lying along the top and bottom of the viewport. Videos
+// scrolling through them are refracted by the same shader you'd get from the
+// reference lens — rounded-box mask, lens magnification, frosted sampling, and
+// the rb1/rb2/rb3 rim lighting — with the 2D rounded box collapsed into a
+// horizontal slab, so the bar's two faces play the part of the lens edge.
+//
+// On top of the reference: the clip swells sideways and its channels take
+// different lens depths as it passes through, so it separates like anaglyph.
+// That spread opens up with scroll speed and closes when the page settles.
+//
+// The bars only paint where a clip is under them; the rest of the page, and
+// whatever the lens drags in from past the end of a clip, stays page colour.
 
 document.addEventListener('DOMContentLoaded', () => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -16,10 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const videos = Array.from(document.querySelectorAll('.photo-item video.photo'));
     if (!videos.length) return;
 
-    const BAND_RATIO = 0.13;   // strip depth as a share of the viewport height
+    const BAND_RATIO = 0.13;   // bar depth as a share of the viewport height
     const BAND_MIN = 80;
     const BAND_MAX = 175;
-    const WOBBLE = 1.2;        // headroom the quad leaves for the liquid edge
+    const FROST_PX = 1.5;      // tap spacing for the frosted sampling, in css px
     const VEL_SCALE = 45;      // px of scroll per frame that counts as full speed
     const MAX_DPR = 2;
     const BG = [0xf5 / 255, 0xf5 / 255, 0xf5 / 255];   // matches body background
@@ -37,74 +43,106 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     const FRAG = `
-        #ifdef GL_FRAGMENT_PRECISION_HIGH
-        precision highp float;
-        #else
         precision mediump float;
-        #endif
 
         varying vec2 vPx;
 
-        uniform sampler2D uTex;
-        uniform vec4 uRect;    // the video's box in viewport px: x, y, w, h
-        uniform vec2 uRes;
-        uniform float uBand;   // strip depth in px
-        uniform float uEdgeY;  // viewport y of the glass rim
-        uniform float uDir;    // +1 when the page runs below the rim, -1 above
-        uniform float uTime;
+        uniform sampler2D iChannel0;
+        uniform vec4 uRect;    // the clip's box in viewport px: x, y, w, h
+        uniform vec2 uSlab;    // the bar: midline y, half depth — in viewport px
+        uniform vec2 uTexel;   // frost tap spacing, in uv
         uniform float uVel;    // -1..1 scroll velocity
         uniform vec3 uBg;
 
-        // The rim breathes along its length, so the pane reads as liquid rather
-        // than as a ruled line across the window.
-        float wobble(float x) {
-            return 1.0
-                + 0.09 * sin(x * 3.7 + uTime * 0.45)
-                + 0.04 * sin(x * 8.3 - uTime * 0.75);
-        }
+        const float POWER_EXPONENT = 6.0;
+        const float MASK_MULTIPLIER_1 = 1.0;
+        const float MASK_MULTIPLIER_2 = 0.95;
+        const float MASK_MULTIPLIER_3 = 1.1;
+        const float MASK_STRENGTH_1 = 8.0;
+        const float MASK_STRENGTH_2 = 16.0;
+        const float MASK_STRENGTH_3 = 2.0;
+        const float MASK_THRESHOLD_1 = 0.95;
+        const float MASK_THRESHOLD_2 = 0.9;
+        const float MASK_THRESHOLD_3 = 1.5;
+        const float LENS_DEPTH = 0.5;
+        const float SAMPLE_RANGE = 1.0;
+        const float LIGHTING_INTENSITY = 0.3;
+        const float SWELL = 0.05;         // how far the clip spreads sideways
+        const float SEPARATION = 0.008;   // anaglyph split, in uv
+        const float SLAB_HALF_UV = 0.215; // the reference blob's half height
 
-        // Outside the clip there is only flat page colour, so fill with that
-        // instead of smearing the video's own edge pixels.
+        // Past the end of a clip there is only flat page colour, so fill with
+        // that instead of smearing the clip's own edge pixels.
         vec3 tap(vec2 uv) {
-            vec3 c = texture2D(uTex, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
-            float inside = step(0.0, uv.y) * step(uv.y, 1.0);
+            vec3 c = texture2D(iChannel0, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
+            float inside = step(0.0, uv.x) * step(uv.x, 1.0)
+                         * step(0.0, uv.y) * step(uv.y, 1.0);
             return mix(uBg, c, inside);
         }
 
+        // The reference frosts with a 9x9 box; these bars cover far more of the
+        // screen than its lens did, and each channel needs its own pass, so the
+        // kernel is thinned to 3x3 and the taps spaced wider to compensate.
+        vec3 frost(vec2 uv) {
+            vec3 total = vec3(0.0);
+            for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
+                for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
+                    total += tap(uv + vec2(x, y) * uTexel);
+                }
+            }
+            return total / 9.0;
+        }
+
         void main() {
-            float band = uBand * wobble(vPx.x / uRes.x);
-            float t = clamp(abs(vPx.y - uEdgeY) / band, 0.0, 1.0);
-            if (t >= 1.0) discard;
+            // The slab standing in for the reference's rounded box: flat through
+            // the middle of the bar, rising steeply at either face.
+            float q = (vPx.y - uSlab.x) / uSlab.y;   // -1..1 across the bar
+            float roundedBox = pow(abs(q), POWER_EXPONENT);
 
-            // Quarter-cylinder glass: the slope runs away at the rim and
-            // flattens to nothing where the strip ends, so light bends hardest
-            // right at the edge and the inner boundary stays seamless.
-            float u = 1.0 - t;
-            float slope = u / sqrt(max(1.0 - u * u, 0.02));
-            float bend = min(slope, 5.0) / 5.0;
+            float rb1 = clamp((1.0 - roundedBox * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, 0.0, 1.0);
+            float rb2 = clamp((MASK_THRESHOLD_1 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, 0.0, 1.0) -
+                clamp((MASK_THRESHOLD_2 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, 0.0, 1.0);
+            float rb3 = clamp((MASK_THRESHOLD_3 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, 0.0, 1.0) -
+                clamp((1.0 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, 0.0, 1.0);
 
-            float speed = min(abs(uVel), 1.0);
+            float transition = smoothstep(0.0, 1.0, rb1 + rb2);
+            if (transition <= 0.0) discard;
+
             vec2 uv = (vPx - uRect.xy) / uRect.zw;
+            float mid = (uSlab.x - uRect.y) / uRect.w;   // the bar's midline, in uv
+            float speed = min(abs(uVel), 1.0);
+            float spread = 0.12 + 0.88 * speed;
 
-            // Refraction pulls the sample deeper into the page, and the three
-            // channels take three different depths — that split is what widens
-            // into visible chromatic divergence as the scroll speeds up.
-            float push = bend * band * (0.55 + 0.40 * speed) * uDir / uRect.w;
-            float spread = 0.12 + 0.65 * speed;
-            vec2 n = vec2(0.0, push);
+            // The bar squeezes what sits under its faces back toward its midline
+            // and lets the middle through straight — the reference's lens, on one
+            // axis.
+            float depth = roundedBox * LENS_DEPTH;
 
-            vec3 col;
-            col.r = tap(uv + n * (1.0 + spread)).r;
-            col.g = tap(uv + n).g;
-            col.b = tap(uv + n * (1.0 - spread)).b;
+            // The 3D spread runs across the whole bar rather than only its rim,
+            // so a clip swells and its channels part company the entire time it
+            // is passing through. At rest it closes back up to almost nothing.
+            float pass = rb1 * (0.45 + 0.55 * roundedBox) * spread;
+            float swell = 1.0 + pass * SWELL;
+            float sep = pass * SEPARATION;
+            float ux = 0.5 + (uv.x - 0.5) * swell;
 
-            // Rim light: a soft lift across the bend plus a travelling glint
-            // hugging the very edge.
-            float glint = 0.5 + 0.5 * sin(vPx.x / uRes.x * 5.0 - uTime * 0.6);
-            col += pow(bend, 3.0) * 0.20 + pow(bend, 10.0) * 0.38 * glint;
+            vec2 lensR = vec2(ux + sep, mid + (uv.y - mid) * (1.0 - depth * (1.0 + spread)));
+            vec2 lensG = vec2(ux, mid + (uv.y - mid) * (1.0 - depth));
+            vec2 lensB = vec2(ux - sep, mid + (uv.y - mid) * (1.0 - depth * (1.0 - spread)));
 
-            float a = 1.0 - smoothstep(0.55, 1.0, t);
-            gl_FragColor = clamp(vec4(col * a, a), 0.0, 1.0);   // premultiplied
+            vec4 fragColor = vec4(frost(lensR).r, frost(lensG).g, frost(lensB).b, 1.0);
+
+            // Lighting, as in the reference: a soft gradient down the body plus
+            // the bright ring hugging each face. The reference works in screen-up
+            // coordinates, so the slab position flips sign on the way in.
+            float m2y = -q * SLAB_HALF_UV;
+            float gradient = clamp((clamp(m2y, 0.0, 0.2) + 0.1) / 2.0, 0.0, 1.0) +
+                clamp((clamp(-m2y, -1000.0, 0.2) * rb3 + 0.1) / 2.0, 0.0, 1.0);
+            vec4 lighting = clamp(fragColor + vec4(rb1) * gradient + vec4(rb2) * LIGHTING_INTENSITY, 0.0, 1.0);
+
+            // The reference mixes back to the untouched image; here the untouched
+            // image is the real video underneath, so fade out in alpha instead.
+            gl_FragColor = vec4(lighting.rgb * transition, transition);   // premultiplied
         }
     `;
 
@@ -125,20 +163,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const compile = (type, src) => {
+    const createShader = (type, source) => {
         const shader = gl.createShader(type);
-        gl.shaderSource(shader, src);
+        gl.shaderSource(shader, source);
         gl.compileShader(shader);
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('glass shader:', gl.getShaderInfoLog(shader));
+            console.error('Shader error:', gl.getShaderInfoLog(shader));
             gl.deleteShader(shader);
             return null;
         }
         return shader;
     };
 
-    const vs = compile(gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+    const vs = createShader(gl.VERTEX_SHADER, VERT);
+    const fs = createShader(gl.FRAGMENT_SHADER, FRAG);
     if (!vs || !fs) {
         canvas.remove();
         return;
@@ -149,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     gl.attachShader(program, fs);
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error('glass program:', gl.getProgramInfoLog(program));
+        console.error('Program error:', gl.getProgramInfoLog(program));
         canvas.remove();
         return;
     }
@@ -162,19 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
         new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
         gl.STATIC_DRAW
     );
+
     const position = gl.getAttribLocation(program, 'position');
     gl.enableVertexAttribArray(position);
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
     const uniforms = {
-        tex: gl.getUniformLocation(program, 'uTex'),
+        texture: gl.getUniformLocation(program, 'iChannel0'),
         quad: gl.getUniformLocation(program, 'uQuad'),
         rect: gl.getUniformLocation(program, 'uRect'),
-        res: gl.getUniformLocation(program, 'uRes'),
-        band: gl.getUniformLocation(program, 'uBand'),
-        edgeY: gl.getUniformLocation(program, 'uEdgeY'),
-        dir: gl.getUniformLocation(program, 'uDir'),
-        time: gl.getUniformLocation(program, 'uTime'),
+        resolution: gl.getUniformLocation(program, 'uRes'),
+        slab: gl.getUniformLocation(program, 'uSlab'),
+        texel: gl.getUniformLocation(program, 'uTexel'),
         vel: gl.getUniformLocation(program, 'uVel'),
         bg: gl.getUniformLocation(program, 'uBg')
     };
@@ -182,12 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // premultiplied source
     gl.clearColor(0, 0, 0, 0);
-    gl.uniform1i(uniforms.tex, 0);
+    gl.uniform1i(uniforms.texture, 0);
     gl.uniform3f(uniforms.bg, BG[0], BG[1], BG[2]);
 
-    // One texture per clip, built the first time that clip reaches a strip.
+    // One texture per clip, built the first time that clip reaches a bar.
     const slots = new Map();
-    const slotFor = (video) => {
+    const setupTexture = (video) => {
         let slot = slots.get(video);
         if (!slot) {
             const texture = gl.createTexture();
@@ -202,26 +239,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return slot;
     };
 
-    // Upload at most once per clip per frame, however many strips it is under.
-    const upload = (video, frame) => {
-        const slot = slotFor(video);
+    // Upload at most once per clip per frame, however many bars it is under.
+    const upload = (video, frameId) => {
+        const slot = setupTexture(video);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, slot.texture);
-        if (slot.frame === frame) return;
+        if (slot.frame === frameId) return;
         if (slot.allocated) {
             gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video);
         } else {
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
             slot.allocated = true;
         }
-        slot.frame = frame;
+        slot.frame = frameId;
     };
 
-    let dpr = 0;
     let vw = 0;
     let vh = 0;
-    const resize = () => {
-        dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    const setCanvasSize = () => {
+        const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
         vw = window.innerWidth;
         vh = window.innerHeight;
         const w = Math.max(1, Math.round(vw * dpr));
@@ -231,10 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
             canvas.height = h;
             gl.viewport(0, 0, w, h);
         }
-        gl.uniform2f(uniforms.res, vw, vh);
+        gl.uniform2f(uniforms.resolution, vw, vh);
     };
-    resize();
-    window.addEventListener('resize', resize);
+    setCanvasSize();
+    window.addEventListener('resize', setCanvasSize);
 
     let lost = false;
     canvas.addEventListener('webglcontextlost', (e) => {
@@ -242,8 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lost = true;
     });
     canvas.addEventListener('webglcontextrestored', () => {
-        // Textures and program are gone with the context; a reload is the only
-        // honest recovery, so leave the strips off rather than draw garbage.
+        // Program and textures went with the context; a reload is the only
+        // honest recovery, so drop the bars rather than draw garbage.
         canvas.remove();
     });
 
@@ -251,10 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let velocity = 0;
     let painted = false;
     let frameId = 0;
-    const start = performance.now();
 
-    const frame = () => {
-        requestAnimationFrame(frame);
+    const render = () => {
+        requestAnimationFrame(render);
         if (document.hidden || lost) return;
 
         if (small.matches) {
@@ -267,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (vw !== window.innerWidth || vh !== window.innerHeight) resize();
+        if (vw !== window.innerWidth || vh !== window.innerHeight) setCanvasSize();
 
         const y = window.scrollY;
         const raw = Math.max(-1, Math.min(1, (y - lastScroll) / VEL_SCALE));
@@ -275,21 +310,17 @@ document.addEventListener('DOMContentLoaded', () => {
         velocity += (raw - velocity) * 0.2;   // smoothed, so the split eases out
 
         const band = Math.min(BAND_MAX, Math.max(BAND_MIN, vh * BAND_RATIO));
-        const reach = band * WOBBLE;
-        const time = (performance.now() - start) / 1000;
+        const half = band / 2;
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         painted = false;
         frameId++;
-
-        gl.uniform1f(uniforms.band, band);
-        gl.uniform1f(uniforms.time, time);
         gl.uniform1f(uniforms.vel, velocity);
 
-        // Each strip redraws whatever slice of a clip is under it.
-        const strips = [
-            { edgeY: 0, dir: 1, top: 0, bottom: reach },
-            { edgeY: vh, dir: -1, top: vh - reach, bottom: vh }
+        // Each bar redraws whatever slice of a clip is lying under it.
+        const bars = [
+            { mid: half, top: 0, bottom: band },
+            { mid: vh - half, top: vh - band, bottom: vh }
         ];
 
         videos.forEach(video => {
@@ -298,21 +329,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (rect.bottom <= 0 || rect.top >= vh) return;
             if (video.readyState < 2 || !video.videoWidth) return;   // no frame yet
 
-            strips.forEach(strip => {
-                const top = Math.max(rect.top, strip.top);
-                const bottom = Math.min(rect.bottom, strip.bottom);
+            bars.forEach(bar => {
+                const top = Math.max(rect.top, bar.top);
+                const bottom = Math.min(rect.bottom, bar.bottom);
                 if (bottom - top < 0.5) return;
 
                 upload(video, frameId);
                 gl.uniform4f(uniforms.rect, rect.left, rect.top, rect.width, rect.height);
                 gl.uniform4f(uniforms.quad, rect.left, top, rect.width, bottom - top);
-                gl.uniform1f(uniforms.edgeY, strip.edgeY);
-                gl.uniform1f(uniforms.dir, strip.dir);
+                gl.uniform2f(uniforms.slab, bar.mid, half);
+                gl.uniform2f(uniforms.texel, FROST_PX / rect.width, FROST_PX / rect.height);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                 painted = true;
             });
         });
     };
 
-    requestAnimationFrame(frame);
+    render();
 });
