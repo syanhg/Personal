@@ -75,16 +75,21 @@ body {
     transition: opacity 0.2s ease;
 }
 
+/* 12px keeps every caption on exactly two rows in the 340px column: the
+   longest needs under 13.7px to stay off a third row, the shortest over 10.9px
+   to keep off a single one. The min-height holds those two rows whatever the
+   text does, so the box never changes size between videos. */
 .caption-box {
     align-self: start;
     padding: 20px;
+    min-height: calc(3.2em + 40px);
     background-color: #e8e8e8;
     color: #666;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     letter-spacing: -0.01em;
     line-height: 1.6;
-    text-wrap: pretty;
+    text-wrap: balance;
     opacity: 0;
     pointer-events: none;
 }
