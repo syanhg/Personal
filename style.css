@@ -63,40 +63,55 @@ body {
     pointer-events: none;
 }
 
-.photo-caption {
-    position: absolute;
-    inset: 0;
-    z-index: 2;   /* above the canvas — the ends bend footage, not captions */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background-color: rgba(0, 0, 0, 0.68);
-    color: #f5f5f5;
+/* Captions read in the sidebar, not over the footage. The bio and the caption
+   box share one grid cell, so the box takes the bio's exact place while a video
+   is hovered and gives it straight back afterwards, with nothing moving. */
+.swap {
+    display: grid;
+}
+
+.swap > * {
+    grid-area: 1 / 1;
+    transition: opacity 0.2s ease;
+}
+
+.caption-box {
+    align-self: start;
+    padding: 20px;
+    background-color: #e8e8e8;
+    color: #666;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 15px;
+    font-size: 14px;
     letter-spacing: -0.01em;
     line-height: 1.6;
-    text-align: center;
-    text-wrap: balance;
+    text-wrap: pretty;
     opacity: 0;
-    transition: opacity 0.3s ease;
     pointer-events: none;
 }
 
-@media (hover: hover) {
-    .photo-item:hover .photo-caption {
-        opacity: 1;
-    }
+.container.is-captioning .bio {
+    opacity: 0;
 }
 
-/* Touch devices have no hover, so caption.js toggles this class instead. */
-.photo-item.is-active .photo-caption {
+.container.is-captioning .caption-box {
     opacity: 1;
 }
 
+/* The figcaptions are the source text and stay readable to screen readers,
+   but on desktop only the sidebar box shows them. */
+.photo-caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .photo-caption {
+    .swap > * {
         transition: none;
     }
 }
@@ -119,6 +134,29 @@ body {
     .gallery {
         width: 100%;
         padding: 0 0 40px;
+    }
+
+    /* No hover to drive the sidebar box, so each caption sits under its own
+       video instead. */
+    .caption-box {
+        display: none;
+    }
+
+    .photo-caption {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip-path: none;
+        white-space: normal;
+        padding-top: 10px;
+        color: #666;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 13px;
+        letter-spacing: -0.01em;
+        line-height: 1.6;
+        text-wrap: pretty;
     }
 
     /* The divergence is desktop-only; glass.js stops painting here too. */
