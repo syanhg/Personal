@@ -1,3 +1,11 @@
+@font-face {
+    font-family: 'Exposure Trial';
+    src: url('/fonts/ExposureTrialVAR.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -8,187 +16,15 @@ body {
     background-color: #f5f5f5;
     font-family: 'Times New Roman', Times, serif;
     min-height: 100vh;
-}
-
-.layout {
     display: flex;
-    align-items: flex-start;
-    gap: 80px;
-    padding: 0 24px 0 40px;
-}
-
-.container {
-    flex: 0 0 340px;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    padding: 40px 0;
+    padding: 40px 24px;
+}
+
+.bio {
+    text-align: center;
     animation: pageFadeIn 0.3s ease;
-}
-
-/* No padding at either end: the clips run flush to the top and bottom of the
-   page, so there is nothing between them and the edges for the divergence to
-   work across. */
-.gallery {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.photo-item {
-    position: relative;
-}
-
-/* Videos and images size from their width/height attributes, so the
-   gallery reserves the right space before the media loads. */
-.photo {
-    display: block;
-    width: 100%;
-    height: auto;
-    background-color: #e0e0e0;
-}
-
-/* Where the videos diverge at the top and bottom ends of the page. The canvas
-   spans the window so the picture can splay past the edges of its own box;
-   everywhere glass.js is not drawing, it stays transparent. */
-#page-glass {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    pointer-events: none;
-}
-
-/* Captions read in the sidebar, not over the footage. The bio and the caption
-   box share one grid cell, so the box takes the bio's exact place while a video
-   is hovered and gives it straight back afterwards, with nothing moving. */
-.swap {
-    display: grid;
-}
-
-.swap > * {
-    grid-area: 1 / 1;
-    transition: opacity 0.2s ease;
-}
-
-/* 12px keeps every caption on exactly two rows in the 340px column: the
-   longest needs under 13.7px to stay off a third row, the shortest over 10.9px
-   to keep off a single one. The min-height holds those two rows whatever the
-   text does, so the box never changes size between videos. */
-.caption-box {
-    align-self: start;
-    padding: 20px;
-    min-height: calc(3.2em + 40px);
-    background-color: #e8e8e8;
-    color: #666;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 12px;
-    letter-spacing: -0.01em;
-    line-height: 1.6;
-    text-wrap: balance;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.container.is-captioning .bio {
-    opacity: 0;
-}
-
-.container.is-captioning .caption-box {
-    opacity: 1;
-}
-
-/* The figcaptions are the source text and stay readable to screen readers,
-   but on desktop only the sidebar box shows them. */
-.photo-caption {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .swap > * {
-        transition: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .layout {
-        flex-direction: column;
-        gap: 0;
-        padding: 0 24px;
-    }
-
-    .container {
-        flex: none;
-        position: static;
-        height: auto;
-        width: 100%;
-        padding: 40px 0 20px;
-    }
-
-    .gallery {
-        width: 100%;
-    }
-
-    /* No hover to swap the sidebar with, so the caption goes back over its own
-       video and a tap brings it up. */
-    .caption-box {
-        display: none;
-    }
-
-    .photo-caption {
-        inset: 0;
-        width: auto;
-        height: auto;
-        margin: 0;
-        overflow: hidden;
-        clip-path: none;
-        white-space: normal;
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        background-color: rgba(0, 0, 0, 0.68);
-        color: #f5f5f5;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 15px;
-        letter-spacing: -0.01em;
-        line-height: 1.6;
-        text-align: center;
-        text-wrap: balance;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-    }
-
-    /* Touch has no hover, so caption.js toggles this class on tap instead. */
-    .photo-item.is-active .photo-caption {
-        opacity: 1;
-    }
-
-    /* The divergence is desktop-only; glass.js stops painting here too. */
-    #page-glass {
-        display: none;
-    }
-}
-
-@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
-    .photo-caption {
-        transition: none;
-    }
 }
 
 @keyframes pageFadeIn {
@@ -197,46 +33,31 @@ body {
 }
 
 h1 {
+    font-family: 'Exposure Trial', 'Times New Roman', Times, serif;
     font-size: 18px;
     font-weight: normal;
     color: #666;
-    margin-bottom: 40px;
+    margin-bottom: 10px;
 }
 
 p {
     font-size: 16px;
     line-height: 1.6;
     color: #666;
-    margin-bottom: 20px;
+    margin-bottom: 6px;
+}
+
+p:last-child {
+    margin-bottom: 0;
 }
 
 p.links {
     font-size: 13px;
-    margin-top: -30px;
     margin-bottom: 24px;
-}
-
-/* The bio lines read as one block, so they sit tighter than the default. */
-.container p:not(.links) {
-    margin-bottom: 6px;
-}
-
-.container p:not(.links):last-child {
-    margin-bottom: 0;
-}
-
-.nav {
-    display: flex;
-    gap: 4px;
-    margin-top: 30px;
 }
 
 a {
     color: #666;
-    text-decoration: none;
-}
-
-p a {
     text-decoration: underline;
 }
 
@@ -247,86 +68,11 @@ p:not(.links) a {
     text-underline-offset: 3px;
 }
 
-.h1-link {
-    color: inherit;
-    border-bottom: none;
-}
-
 a:hover {
     opacity: 0.7;
 }
 
-.nav-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0;
-    padding: 2px 6px;
-    border: 1px solid #666;
-    font-size: 16px;
-    font-family: inherit;
-    color: #666;
-    background: transparent;
-    text-decoration: none;
-    cursor: pointer;
-    overflow: hidden;
-    opacity: 1;
-    transition: border-color 0.2s;
-}
-
-.nav-btn .arrow {
-    display: inline-block;
-    opacity: 0;
-    transform: translateX(-6px);
-    transition: opacity 0.25s ease, transform 0.25s ease;
-    margin-left: 0;
-    width: 0;
-    overflow: hidden;
-    transition: opacity 0.25s ease, transform 0.25s ease, width 0.25s ease, margin-left 0.25s ease;
-}
-
-.nav-btn:hover {
-    opacity: 1;
-    border-color: #444;
-    color: #444;
-}
-
-.nav-btn:hover .arrow {
-    opacity: 1;
-    transform: translateX(0);
-    width: 1em;
-    margin-left: 6px;
-}
-
-/* Quote page styles */
-.quote-item {
-    display: flex;
-    gap: 40px;
-    margin-bottom: 25px;
-    align-items: flex-start;
-}
-
-.quote-number {
-    font-size: 12px;
-    color: #666;
-    min-width: 20px;
-    flex-shrink: 0;
-    padding-top: 2px;
-}
-
-.quote-text {
-    font-size: 16px;
-    line-height: 1.6;
-    color: #666;
-    margin: 0;
-}
-
-/* White selection effect */
 ::selection {
-    background-color: white;
-    color: #666;
-}
-
-::-moz-selection {
     background-color: white;
     color: #666;
 }
