@@ -22,8 +22,8 @@ body {
     padding: 40px 24px;
 }
 
+/* The block sits in the middle of the page; the lines inside it stay flush left. */
 .bio {
-    text-align: center;
     animation: pageFadeIn 0.3s ease;
 }
 
