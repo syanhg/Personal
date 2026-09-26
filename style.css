@@ -36,9 +36,6 @@ h1 {
     font-family: 'Exposure Trial', 'Times New Roman', Times, serif;
     font-size: 18px;
     font-weight: normal;
-    /* Exposure has no weight axis; lower EXPO values thicken the strokes
-       without changing the advance widths. */
-    font-variation-settings: 'EXPO' -20;
     color: #666;
     margin-bottom: 10px;
 }
