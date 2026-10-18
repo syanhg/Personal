@@ -68,6 +68,10 @@ p:not(.links) a {
     text-underline-offset: 3px;
 }
 
+a.plain {
+    text-decoration: none;
+}
+
 a:hover {
     opacity: 0.7;
 }
