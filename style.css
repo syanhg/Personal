@@ -69,6 +69,7 @@ p:not(.links) a {
 }
 
 a.email {
+    font-size: 16px;
     background-color: white;
     padding: 0 2px;
 }
