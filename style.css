@@ -63,6 +63,18 @@ html::after {
     left: 24px;
 }
 
+/* Left and right lines joining each side's two squares, centered on them (24 + 14/2 - 1.5/2). */
+.rails {
+    position: fixed;
+    top: 38px;
+    bottom: 38px;
+    left: 30.25px;
+    right: 30.25px;
+    border-left: 1.5px solid var(--green);
+    border-right: 1.5px solid var(--green);
+    pointer-events: none;
+}
+
 /* Everything is centered: a sans line on top, then a wide gap, then the serif lines. */
 .bio {
     animation: pageFadeIn 0.3s ease;
