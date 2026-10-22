@@ -266,12 +266,89 @@
         pips.forEach(pip => pip.classList.toggle('off', !FACES[face].includes(pip.dataset.pip)));
     };
 
+    // Sound: a dice rattle while the die spins, then a two-note chime as the pieces land.
+    // All synthesized with Web Audio, so there are no files to load.
+    const NOTES = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];  // C major pentatonic, C5–E6
+
+    let audio = null;
+    let noise = null;
+    const sound = () => {
+        if (!audio) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            audio = new Ctx();
+            noise = audio.createBuffer(1, Math.round(audio.sampleRate * 0.05), audio.sampleRate);
+            const data = noise.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        }
+        if (audio.state === 'suspended') audio.resume();
+        return audio;
+    };
+
+    // One knock of the die on the table: a short burst of band-passed noise.
+    const knock = (t, level) => {
+        const src = audio.createBufferSource();
+        src.buffer = noise;
+        const filter = audio.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1800 + Math.random() * 2200;
+        filter.Q.value = 4;
+        const gain = audio.createGain();
+        gain.gain.setValueAtTime(level, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        src.connect(filter).connect(gain).connect(audio.destination);
+        src.start(t);
+        src.stop(t + 0.05);
+    };
+
+    const tone = (t, freq, level, length = 0.18) => {
+        const osc = audio.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        const gain = audio.createGain();
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(level, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + length);
+        osc.connect(gain).connect(audio.destination);
+        osc.start(t);
+        osc.stop(t + length + 0.02);
+    };
+
+    // Knocks that start quick and spread out like a die settling, then a random rising pair of notes.
+    const rollSound = () => {
+        if (!sound()) return;
+        const now = audio.currentTime + 0.01;
+        let t = now;
+        const knocks = 5 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < knocks; i++) {
+            knock(t, 0.6 * (1 - i / knocks) + 0.1);
+            t += 0.03 + i * 0.012 + Math.random() * 0.03;
+        }
+        const low = Math.floor(Math.random() * (NOTES.length - 2));
+        const high = low + 1 + Math.floor(Math.random() * 2);
+        const land = Math.max(t, now + 0.5);
+        tone(land, NOTES[low], 0.15);
+        tone(land + 0.1, NOTES[high], 0.15, 0.3);
+    };
+
+    // Back to the original: the same chime falling instead of rising.
+    const resetSound = () => {
+        if (!sound()) return;
+        const now = audio.currentTime + 0.01;
+        tone(now, NOTES[4], 0.12);
+        tone(now + 0.09, NOTES[0], 0.12, 0.3);
+    };
+
     button.addEventListener('click', () => {
         roll();
+        rollSound();
         flip(randomize);
     });
 
     addEventListener('keydown', e => {
-        if (e.key === 'Escape' && main.classList.contains('shuffled')) flip(reset);
+        if (e.key === 'Escape' && main.classList.contains('shuffled')) {
+            resetSound();
+            flip(reset);
+        }
     });
 })();
