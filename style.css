@@ -37,12 +37,10 @@ header {
     margin-bottom: var(--gap);
 }
 
-/* The name matches the email: same serif and size; only the socials stay sans. */
 h1 {
-    font-family: 'Times New Roman', Times, serif;
     font-size: 20px;
     font-weight: normal;
-    line-height: 1.2;
+    letter-spacing: -0.01em;
 }
 
 p.links {
