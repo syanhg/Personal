@@ -8,18 +8,29 @@
     <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-    <main class="bio">
-        <header>
-            <h1>Seungyong (Alex) Yang</h1>
+    <button class="shuffle" type="button" aria-label="Shuffle the layout" title="Shuffle (Esc to reset)">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect class="die" x="3" y="3" width="18" height="18" rx="4.5"/>
+            <circle data-pip="tl" cx="8.25" cy="8.25" r="1.75"/>
+            <circle data-pip="tr" cx="15.75" cy="8.25" r="1.75"/>
+            <circle data-pip="ml" cx="8.25" cy="12" r="1.75" class="off"/>
+            <circle data-pip="c" cx="12" cy="12" r="1.75"/>
+            <circle data-pip="mr" cx="15.75" cy="12" r="1.75" class="off"/>
+            <circle data-pip="bl" cx="8.25" cy="15.75" r="1.75"/>
+            <circle data-pip="br" cx="15.75" cy="15.75" r="1.75"/>
+        </svg>
+    </button>
 
-            <p class="links">
-                <a href="https://x.com/alexyango">x</a>
-                <a href="https://www.linkedin.com/in/seungyong12/">linkedin</a>
-                <a href="https://cosign.co/alex">cosign</a>
-                <a href="https://github.com/syanhg">github</a>
-                <a href="https://scholar.google.com/citations?user=KnknCBkAAAAJ&hl=en">google scholar</a>
-            </p>
-        </header>
+    <main class="bio">
+        <h1>Seungyong (Alex) Yang</h1>
+
+        <p class="links">
+            <a href="https://x.com/alexyango">x</a>
+            <a href="https://www.linkedin.com/in/seungyong12/">linkedin</a>
+            <a href="https://cosign.co/alex">cosign</a>
+            <a href="https://github.com/syanhg">github</a>
+            <a href="https://scholar.google.com/citations?user=KnknCBkAAAAJ&hl=en">google scholar</a>
+        </p>
 
         <section class="about">
             <p>building <a href="https://frida.chat/">frida</a> & on leave from <a href="https://web.cs.toronto.edu/">cs at uoft</a></p>
@@ -31,5 +42,7 @@
             <a href="mailto:alex@mony.company">alex@mony.company</a>
         </p>
     </main>
+
+    <script src="../shuffle.js"></script>
 </body>
 </html>

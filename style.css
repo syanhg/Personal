@@ -1,6 +1,8 @@
 :root {
     --green: #2f9438;
     --paper: #fdfdfb;
+    --ink: var(--green);
+    --bg: var(--paper);
     --gap: 88px;
 }
 
@@ -11,8 +13,8 @@
 }
 
 body {
-    background-color: var(--paper);
-    color: var(--green);
+    background-color: var(--bg);
+    color: var(--ink);
     font-family: 'Times New Roman', Times, serif;
     min-height: 100vh;
     display: flex;
@@ -20,6 +22,7 @@ body {
     justify-content: center;
     padding: 40px 24px;
     text-align: center;
+    transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 /* Everything is centered: a sans line on top, then a wide gap, then the serif lines. */
@@ -32,30 +35,33 @@ body {
     to   { opacity: 1; }
 }
 
-header {
+h1,
+p.links {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    margin-bottom: var(--gap);
 }
 
+/* --s is a size multiplier the shuffle sets per piece; it's 1 in the default layout. */
 h1 {
-    font-size: 20px;
+    font-size: calc(20px * var(--s, 1));
     font-weight: normal;
     letter-spacing: -0.01em;
 }
 
 p.links {
-    font-size: 13px;
+    font-size: calc(13px * var(--s, 1));
     margin-top: 10px;
+    margin-bottom: var(--gap);
 }
 
+/* --hl is the shuffle's palette highlight; by default it's a faint tint of the ink. */
 p.links a {
-    background-color: rgba(47, 148, 56, 0.12);
+    background-color: var(--hl, color-mix(in srgb, var(--ink) 12%, transparent));
     padding: 1px 4px;
 }
 
 .about p,
 p.email {
-    font-size: 20px;
+    font-size: calc(20px * var(--s, 1));
     line-height: 1.2;
 }
 
@@ -80,6 +86,84 @@ a:hover {
 }
 
 ::selection {
-    background-color: var(--green);
-    color: var(--paper);
+    background-color: var(--ink);
+    color: var(--bg);
+}
+
+/* Dice button, top right: rounded square with a hairline inner edge, die drawn in the page colour. */
+.shuffle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 12px;
+    background-color: var(--ink);
+    color: var(--bg);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bg) 22%, transparent);
+    cursor: pointer;
+    transition: background-color 0.5s ease, color 0.5s ease, scale 0.15s ease;
+}
+
+.shuffle:hover {
+    scale: 1.06;
+}
+
+.shuffle:active {
+    scale: 0.92;
+}
+
+.shuffle:focus-visible {
+    outline: 1.5px solid var(--ink);
+    outline-offset: 3px;
+}
+
+.shuffle svg {
+    width: 24px;
+    height: 24px;
+    transition: rotate 0.6s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.shuffle .die {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.shuffle circle {
+    fill: currentColor;
+    transition: opacity 0.2s ease 0.25s;
+}
+
+.shuffle circle.off {
+    opacity: 0;
+}
+
+/* Shuffled: the page becomes a full-window grid that shuffle.js fills in. */
+.bio.shuffled {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    gap: 20px 32px;
+    padding: 84px clamp(24px, 5vw, 72px) 48px;
+    overflow: auto;
+}
+
+.bio.shuffled > * {
+    margin: 0;
+}
+
+/* Treatments the shuffle sometimes adds on top of the colourway (data-theme on <html>). */
+[data-theme="marker"] .bio.shuffled > * {
+    background-color: var(--hl);
+    padding: 6px 10px;
+}
+
+[data-theme="boxed"] .bio.shuffled > * {
+    outline: 1px dashed var(--ink);
+    outline-offset: 6px;
 }
