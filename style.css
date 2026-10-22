@@ -48,6 +48,11 @@ p.links {
     margin-top: 10px;
 }
 
+p.links a {
+    background-color: rgba(47, 148, 56, 0.12);
+    padding: 1px 4px;
+}
+
 .about p,
 p.email {
     font-size: 20px;
