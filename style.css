@@ -33,17 +33,17 @@ body {
     to   { opacity: 1; }
 }
 
-/* Load-in construction guides (see guides.js): dashed boxes trace each component, then fade. */
+/* Construction guides (see guides.js): dashed boxes trace each component on load and stay. */
 .guides {
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
     pointer-events: none;
     z-index: 1;
-    transition: opacity 0.7s ease;
 }
 
-.guides.done {
-    opacity: 0;
+.guides.static .guide {
+    animation: none;
 }
 
 .guide {
@@ -62,9 +62,6 @@ body {
     border-left: 1px dashed var(--guide);
     animation-name: drawDown;
 }
-
-.guide.h.frame { border-top-style: solid; }
-.guide.v.frame { border-left-style: solid; }
 
 @keyframes drawRight { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 @keyframes drawDown  { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
