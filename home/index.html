@@ -29,10 +29,21 @@
 
         <p class="email">
             <svg class="mail-icon" viewBox="0 0 32 24" aria-hidden="true">
-                <path d="M3.6 4.3C10 3.7 22 3.9 28.5 4.2C28.9 9 28.8 15 28.4 20C21 20.5 11 20.3 3.9 19.9C3.4 14.5 3.3 9.5 3.6 4.3Z"/>
-                <path d="M5.2 6C9.2 9.6 12.6 12.3 16 13.1C19.5 12.3 23 9.4 26.9 5.9"/>
-                <path d="M7 17.4L11.3 14.3"/>
-                <path d="M25 17.4L20.8 14.2"/>
+                <defs>
+                    <!-- Ink grain: noise roughens the edges and knocks speckles out of the stroke. -->
+                    <filter id="grain" x="-10%" y="-10%" width="120%" height="120%">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="noise"/>
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.8" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+                        <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.8 0 0 0 1.6" result="speckle"/>
+                        <feComposite in="rough" in2="speckle" operator="in"/>
+                    </filter>
+                </defs>
+                <g filter="url(#grain)">
+                    <path d="M3.6 4.3C10 3.7 22 3.9 28.5 4.2C28.9 9 28.8 15 28.4 20C21 20.5 11 20.3 3.9 19.9C3.4 14.5 3.3 9.5 3.6 4.3Z"/>
+                    <path d="M5.2 6C9.2 9.6 12.6 12.3 16 13.1C19.5 12.3 23 9.4 26.9 5.9"/>
+                    <path d="M7 17.4L11.3 14.3"/>
+                    <path d="M25 17.4L20.8 14.2"/>
+                </g>
             </svg>
             <a href="mailto:alex@mony.company">alex@mony.company</a>
         </p>
