@@ -90,7 +90,7 @@ a:hover {
     color: var(--bg);
 }
 
-/* Randomize button, top right: a small die and its label in a square-cornered outline, all in the ink colour. */
+/* Randomize button, top right: a small die and its label in white on a square-cornered block of the ink colour. */
 .shuffle {
     position: fixed;
     top: 24px;
@@ -100,15 +100,15 @@ a:hover {
     align-items: center;
     gap: 6px;
     padding: 6px 10px;
-    border: 1px solid currentColor;
+    border: 1px solid var(--ink);
     border-radius: 0;
-    background: none;
-    color: var(--ink);
+    background-color: var(--ink);
+    color: var(--paper);
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 13px;
     line-height: 1;
     cursor: pointer;
-    transition: color 0.5s ease, opacity 0.15s ease, scale 0.15s ease;
+    transition: background-color 0.5s ease, border-color 0.5s ease, opacity 0.15s ease, scale 0.15s ease;
 }
 
 .shuffle:hover {
