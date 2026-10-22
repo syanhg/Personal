@@ -8,6 +8,14 @@
     <link rel="stylesheet" href="../style.css">
 </head>
 <body>
+    <!-- Low-frequency noise nudges a clean outline so it wobbles like a pen stroke. -->
+    <svg class="defs" aria-hidden="true">
+        <filter id="hand-drawn">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="7"/>
+            <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+    </svg>
+
     <main class="bio">
         <header>
             <h1>Seungyong (Alex) Yang</h1>
