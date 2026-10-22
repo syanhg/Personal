@@ -63,40 +63,6 @@ p.email {
     margin-top: var(--gap);
 }
 
-/* Hand-drawn envelope: thick round strokes, inner lines that stop short of the frame. */
-.mail-icon {
-    width: 1.35em;
-    height: 1em;
-    vertical-align: -0.18em;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-/* Each stroke jitters on its own beat, like a hand-drawn line boiling. */
-.mail-icon path {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: strokeShake 0.48s steps(1, end) infinite;
-}
-
-.mail-icon path:nth-child(2) { animation-delay: -0.12s; }
-.mail-icon path:nth-child(3) { animation-delay: -0.24s; }
-.mail-icon path:nth-child(4) { animation-delay: -0.36s; }
-
-@keyframes strokeShake {
-    0%   { transform: translate(0, 0) rotate(0deg); }
-    25%  { transform: translate(0.35px, -0.25px) rotate(0.8deg); }
-    50%  { transform: translate(-0.3px, 0.3px) rotate(-0.6deg); }
-    75%  { transform: translate(0.2px, 0.35px) rotate(0.5deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .mail-icon path { animation: none; }
-}
-
 a {
     color: inherit;
     text-decoration: none;
