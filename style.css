@@ -68,6 +68,11 @@ p:not(.links) a {
     text-underline-offset: 3px;
 }
 
+a.email {
+    background-color: white;
+    padding: 0 2px;
+}
+
 a:hover {
     opacity: 0.7;
 }
