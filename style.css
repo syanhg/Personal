@@ -22,26 +22,6 @@ body {
     text-align: center;
 }
 
-/* Solid green squares pinned to the top-left and bottom-right corners of the window. */
-body::before,
-body::after {
-    content: "";
-    position: fixed;
-    width: 14px;
-    height: 14px;
-    background-color: var(--green);
-}
-
-body::before {
-    top: 24px;
-    left: 24px;
-}
-
-body::after {
-    bottom: 24px;
-    right: 24px;
-}
-
 /* Everything is centered: a sans line on top, then a wide gap, then the serif lines. */
 .bio {
     animation: pageFadeIn 0.3s ease;
