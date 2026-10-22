@@ -42,6 +42,27 @@ body::after {
     right: 24px;
 }
 
+/* Outlined squares, same outer size, in the other two corners. */
+html::before,
+html::after {
+    content: "";
+    position: fixed;
+    box-sizing: border-box;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--green);
+}
+
+html::before {
+    top: 24px;
+    right: 24px;
+}
+
+html::after {
+    bottom: 24px;
+    left: 24px;
+}
+
 /* Everything is centered: a sans line on top, then a wide gap, then the serif lines. */
 .bio {
     animation: pageFadeIn 0.3s ease;
