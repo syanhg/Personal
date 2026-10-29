@@ -59,6 +59,12 @@ p.links a {
     padding: 1px 4px;
 }
 
+/* The article link stays an orange box in every colourway. */
+p.links a.article {
+    background-color: #f26b1d;
+    color: #fff;
+}
+
 .about p,
 p.email {
     font-size: calc(20px * var(--s, 1));
