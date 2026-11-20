@@ -94,6 +94,53 @@ a:hover {
     opacity: 0.7;
 }
 
+.citation {
+    position: relative;
+    display: inline-block;
+}
+
+.citation sup {
+    font-size: 0.6em;
+    line-height: 0;
+}
+
+.citation-toggle {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    padding: 0 2px;
+    cursor: pointer;
+}
+
+.citation-toggle:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+}
+
+.citation-note {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 3;
+    width: min(280px, calc(100vw - 48px));
+    padding: 12px 14px;
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+}
+
+.citation-source {
+    display: block;
+    margin-top: 8px;
+}
+
 ::selection {
     background-color: var(--ink);
     color: var(--bg);
